@@ -1,342 +1,108 @@
-# 🚀 MetaFetch - 高性能全自动代理节点聚合与免费订阅引擎
+# Clash Sub Pipeline
 
-<div align="center">
-
-[![Auto Update](https://img.shields.io/github/actions/workflow/status/lanzm/MetaFetch/fetch.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=Auto%20Update)](https://github.com/lanzm/MetaFetch/actions)
-[![GitHub Stars](https://img.shields.io/github/stars/lanzm/MetaFetch?style=flat-square&logo=github)](https://github.com/lanzm/MetaFetch/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/lanzm/MetaFetch?style=flat-square&logo=github)](https://github.com/lanzm/MetaFetch/network/members)
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Telegram Channel](https://img.shields.io/badge/Telegram-频道交流-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://t.me/MetaFetchNodes)
 <!-- STATS_BADGE_START -->
-![Update](https://img.shields.io/badge/Updated-2026--11--19_00%3A00%3A32-green.svg?style=flat-square)
-![Nodes](https://img.shields.io/badge/Valid_Nodes-146-orange.svg?style=flat-square)
-![Sources](https://img.shields.io/badge/Active_Sources-7-blue.svg?style=flat-square)
+![Auto Update](https://img.shields.io/github/actions/workflow/status/Maxinsomnia/clash-sub-pipeline/fetch.yml?branch=master&style=flat-square&label=Auto%20Update)
 <!-- STATS_BADGE_END -->
-[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 
-<p align="center">
-  <b>实测优质源聚合 · 雨露均沾智能精选 · 全球地区精准识别 · 秒级故障自愈切换</b>
-</p>
+> 基于 [lanzm/MetaFetch](https://github.com/lanzm/MetaFetch) (MIT) fork 二次开发。
+> 融合了 MetaFetch 的抓取/智能池、AutoMergePublicNodes 的源管理、V2RayAggregator 的测速筛选、
+> free-proxy-airport 的订阅自检与 Pages 分发，以及本地 `clash_node_update` 的 TCP 测速思路。
+> 由 GitHub Actions 每 4 小时自动抓取公开节点 → 测速筛选 → 生成 Clash 订阅。
 
-</div>
+## 与上游 MetaFetch 的差异
 
----
+- ✅ **真实测速**：抓取去重后对每个节点做并发 TCP 探测（延迟写回节点并按速度排序），死节点自动剔除
+  （Hysteria2/UDP 与私有节点豁免，可用 Repository Variables 配置）。
+- ✅ **延迟可见**：节点名附带 `⚡123ms` 标签，方便在客户端里肉眼挑快的。
+- ✅ **AI 智能分流**：新增 `🤖 AI 服务` 策略组，OpenAI / Claude / Anthropic / Gemini / Cursor 等域名优先走代理；
+  新增 `🛑 广告拦截` 组。
+- ✅ **订阅自检**：CI 推送前校验 YAML 结构、必需策略组、关键规则、策略组悬空引用，防止推坏配置。
+- ✅ **GitHub Pages 分发**：`docs/` 目录输出 `clash.yaml` / `clash.b64` / `nodes.txt`，可在仓库 Settings → Pages
+  里设置为「Deploy from a branch → master / docs」获得稳定公开订阅链接。
+- ✅ **源扩充**：新增你 star 过的 `chengaopan/AutoMergePublicNodes`、`mahdibland/V2RayAggregator`、
+  `sunmiao4458/free-proxy-airport` 等已实测可达的源。
 
-## 📥 订阅链接面板
+## 订阅链接
 
-> 📢 **官方 Telegram 频道**：欢迎加入 [MetaFetch 节点发布频道 (t.me/MetaFetchNodes)](https://t.me/MetaFetchNodes) 获取最新节点状态广播与技术交流！
+仓库 Actions 首次成功运行后可用：
 
-| 客户端类别 | 适用客户端推荐 | 订阅链接 (点击直接复制) |
-| :--- | :--- | :--- |
-| **🛡️ Clash / Mihomo<br>*(推荐·含完整分流)*** | **Clash Verge Rev** / **Mihomo Party**<br>**FlClash** / **Stash** / **Clash Nyanpasu** | 📡 **CDN 加速 (推荐)：**<br>`https://fastly.jsdelivr.net/gh/lanzm/MetaFetch@master/list.meta.yml`<br>🔗 **备用直连：**<br>`https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.meta.yml` |
-| **📱 通用 Base64** | **Shadowrocket (小火箭)** / **V2rayN**<br>**V2rayNG** / **Quantumult X** / **Surfboard** | 📡 **CDN 加速 (推荐)：**<br>`https://fastly.jsdelivr.net/gh/lanzm/MetaFetch@master/list.b64`<br>🔗 **备用直连：**<br>`https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.b64` |
-| **📄 明文节点列表** | 适合自建订阅转换、Sub-Store 抓取等高级玩法 | 📡 **CDN 加速 (推荐)：**<br>`https://fastly.jsdelivr.net/gh/lanzm/MetaFetch@master/list.txt`<br>🔗 **备用直连：**<br>`https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.txt` |
+| 客户端 | 订阅地址 |
+| :--- | :--- |
+| Clash Verge / Mihomo Party / FlClash / Stash | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.meta.yml` |
+| Shadowrocket / v2rayN / Quantumult X | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.b64` |
+| 明文节点（Sub-Store 等） | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.txt` |
+| GitHub Pages（需在 Settings 启用） | `https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml` |
 
-<details>
-<summary><b>📱 点击展开：手机端扫码快速导入二维码</b></summary>
-<br>
+> 也可走 jsDelivr CDN 加速：`https://cdn.jsdelivr.net/gh/Maxinsomnia/clash-sub-pipeline@master/list.meta.yml`
 
-| 🛡️ Clash / Mihomo 专用订阅 | 📱 通用 Base64 订阅 | 📄 明文 URL 节点列表 |
-| :---: | :---: | :---: |
-| <a href="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.meta.yml"><img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.meta.yml" width="160" alt="Clash QR"></a><br><sub>(适用于手机端 Clash / FlClash 等)</sub> | <a href="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.b64"><img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.b64" width="160" alt="Base64 QR"></a><br><sub>(适用于小火箭 Shadowrocket / V2rayNG)</sub> | <a href="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.txt"><img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Ffastly.jsdelivr.net%2Fgh%2Flanzm%2FMetaFetch%40master%2Flist.txt" width="160" alt="Text QR"></a><br><sub>(明文 URL 直链)</sub> |
+## 工作原理
 
-</details>
-
----
-
-## ⚡ 1 分钟快速上手
-
-> 💡 **核心三步**：① 复制上方订阅链接 → ② 粘贴导入客户端 → ③ 策略组选择「♻️ 自动选择」并开启系统代理。
-
-<details open>
-<summary><b>🖥️ Windows / macOS（以 Clash Verge Rev / Mihomo Party 为例 · 推荐首选）</b></summary>
-
-1. **准备客户端**：安装并启动 [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev/releases) 或 [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party/releases)。
-2. **导入订阅**：
-   - 点击左侧菜单栏的 **「订阅 (Profiles)」**。
-   - 在顶部输入框粘贴 `list.meta.yml` 的 **CDN 加速链接**，点击右侧 **「导入 (Import)」**。
-   - 导入成功后，**单击激活**刚才添加的配置卡片（卡片亮起或打勾即代表生效）。
-3. **选择节点与开启代理**：
-   - 点击左侧 **「代理 (Proxies)」**，推荐勾选 **「♻️ 自动选择」** 或 **「🔰 延迟最低」** 策略组。
-   - 点击左侧 **「设置 (Settings)」**，打开 **「系统代理 (System Proxy)」** 开关，即可畅快上网。
-
-</details>
-
-<details>
-<summary><b>📱 Android 安卓（以 FlClash / Clash Meta 为例）</b></summary>
-
-1. **准备客户端**：安装 [FlClash](https://github.com/chen08209/FlClash/releases)（极简轻量推荐）或 [Clash Meta for Android](https://github.com/MetaCubeX/ClashMetaForAndroid/releases)。
-2. **导入订阅**：
-   - 打开 App，点击底部 **「配置 (Profiles)」** → 点击右下角 **`+`** 号。
-   - 选择 **「从 URL 导入」**，粘贴 `list.meta.yml` 链接，名称随意填写（如 `MetaFetch`），点击保存并下载。
-   - 下载完成后，**点击选中**该配置作为当前使用的文件。
-3. **启动连接**：
-   - 返回首页，点击中央的 **「启动」** 按钮（首次使用系统会弹出 VPN 权限确认，点击“允许”）。
-   - 在代理分组中选择 **「♻️ 自动选择」** 即可。
-
-</details>
-
-<details>
-<summary><b>🍏 iOS 苹果手机（以 Shadowrocket 小火箭 为例）</b></summary>
-
-1. **准备客户端**：在 App Store 下载 Shadowrocket（需非国区 Apple ID）或 [Karing](https://apps.apple.com/app/karing/id6472431552)（国区可用）。
-2. **导入订阅**：
-   - 打开小火箭，点击首页右上角 **`+`** 号。
-   - **类型 (Type)**：选择 `Subscribe`。
-   - **URL**：粘贴上方表格中的 **Base64 订阅链接**（或直接在小火箭首页点击左上角扫码，扫描上方折叠面板里的二维码）。
-   - **备注 (Remark)**：填写 `MetaFetch`，点击右上角「完成 (Save)」。
-3. **更新与启动**：
-   - App 会自动拉取所有节点，建议长按订阅点击 **「按延迟测试」** 刷新节点状态。
-   - 全局路由建议保持 **「配置 (Config)」**，打开顶部 **「未连接」** 开关即可。
-
-</details>
-
-<details>
-<summary><b>🧰 通用 Base64 客户端（v2rayN / v2rayNG）</b></summary>
-
-- **Windows (v2rayN)**：顶部点击「订阅分组」→「订阅分组设置」→「添加」→ 粘贴 `list.b64` 链接并保存 → 再次点击「订阅分组」→「更新全部订阅 (不通过代理)」。
-- **Android (v2rayNG)**：点击左上角菜单栏 →「订阅分组设置」→ 点击右上角 `+` → 粘贴 `list.b64` 链接保存 → 返回主页点击右上角三点菜单 →「更新订阅」。
-
-</details>
-
----
-
-## 📊 节点分布统计
-
-<!-- STATS_TABLE_START -->
-> 更新时间：`2026-11-19 00:00:32`
-> 运行分析：从 `7` 个活跃源中抓取 `224` 个节点，耗时 `0.80s`。去重后保留 `146` 个有效节点。
-
-<div style="overflow-x: auto;">
-
-| 地区分布 | 🇭🇰香港 | 🇹🇼台湾 | 🇯🇵日本 | 🇺🇸美国 | 🇸🇬新加坡 | 🇩🇪德国 | 🇬🇧英国 | 🇷🇺俄罗斯 | 🇨🇦加拿大 | 🇹🇷土耳其 | 🇧🇷巴西 | 🇮🇹意大利 | 🇪🇸西班牙 | 🇨🇳中国 | 🇦🇹奥地利 | 🇪🇪爱沙尼亚 | 🌍其他 | **总计** |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **数量** | 2 | 1 | 3 | 103 | 2 | 1 | 4 | 9 | 8 | 1 | 1 | 1 | 1 | 1 | 2 | 1 | 5 | **146** |
-
-</div>
-<!-- STATS_TABLE_END -->
-
-<br/>
-
-<!-- SOURCE_STATS_TABLE_START -->
-### 📡 各订阅源贡献度明细
-
-> 数据计算时间：`2026-11-19 00:00:31`
-
-<table width="100%"><tr><td>
-
-<div style="max-height: 260px; overflow-y: auto;">
-
-| 排名 | 订阅源名称 | 有效节点数 | 节点贡献占比 |
-| :---: | :--- | :---: | :---: |
-| 1 | `⚡ 0xRadikal Top 100 (15min 真实测活极速源)` | **95** 个 | `65.07%` |
-| 2 | `🏆 huiwin NodeCollection (4h 自动测速清洗)` | **19** 个 | `13.01%` |
-| 3 | `📡 Zhangkai 系列 (speednodes)` | **18** 个 | `12.33%` |
-| 4 | `📱 Pawdroid 免费节点库` | **7** 个 | `4.79%` |
-| 5 | `[动态日期] NodeFree YAML` | **6** 个 | `4.11%` |
-| 6 | `🐱 PuddinCat BestClash (30min 实测)` | **1** 个 | `0.68%` |
-| 7 | `📡 shaoyouvip 每日实测` | **0** 个 | `0.00%` |
-| **-** | **去重后总计** | **146** 个 | `100.00%` |
-
-</div>
-
-</td></tr></table>
-<!-- SOURCE_STATS_TABLE_END -->
-
----
-
-## 🚀 私有化部署与私有节点配置指南
-
-如果你想拥有专属的私有节点池，或者将自建 VPS、商业机场订阅与公共精选池深度融合，本项目提供原生的**私有节点特权支持与容灾兜底体系**：
-
-### 1. 私有节点配置（支持 3 种方式）
-
-无论采用哪种方式，私有节点都会自动前缀 `👑` 尊贵皇冠标识，并在去重时享有最高优先级（绝不被公共免费源覆盖）：
-
-- **方式一（推荐 · GitHub Actions 云端自动构建）：**
-  在 GitHub 仓库 `Settings` → `Secrets and variables` → `Actions` 中，添加 Secret 变量 `PRIVATE_SOURCES`，内容格式为标准 YAML：
-  ```yaml
-  sources:
-    - name: "👑 我的自建 VPS"
-      url: "https://your-domain.com/sub/my-vps-link"
-    - name: "👑 我的付费商业机场"
-      url: "https://your-airport.com/api/v1/client/subscribe?token=xxxx"
-  ```
-- **方式二（本地开发与测试 · 防泄露）：**
-  在项目根目录新建 `private_sources.yaml`（已配置 `.gitignore`，绝对不会误提交到 GitHub），格式同上。运行 `python main.py` 时会自动加载并标记为私有源。
-- **方式三（`sources.yaml` 直接配置）：**
-  直接在 `sources.yaml` 中的某个源追加 `is_private: true` 属性：
-  ```yaml
-  - name: "👑 我的专属私有订阅"
-    url: "https://..."
-    is_private: true
-  ```
-
----
-
-### 2. Smart Pool 订阅池与精选配额配置（`sources.yaml`）
-
-在 `sources.yaml` 顶层 `settings.smart_pool` 中可自由微调配额：
-
-```yaml
-settings:
-  smart_pool:
-    # 核心地区定义 (低延迟主力机房代码，享有名额倾斜)
-    core_regions: ["HK", "JP", "US", "SG"]
-
-    # 私有节点配额 (仅在配置了私有源时生效)
-    private:
-      max_total: 12             # 进入自动选择的私有节点总上限 (防机场节点过多挤爆)
-      core_per_region: 3        # 核心地区(港日美新)每个地区最多入选几个
-      other_per_region: 1       # 非核心地区每个地区最多入选几个
-
-    # 公共免费节点配额 (用于日常兜底)
-    public:
-      core_per_region: 8        # 核心地区每个地区最多入选几个
-      other_per_region: 4       # 非核心地区每个地区最多入选几个
-
-    # 自动选择池全局容量保障
-    min_pool_size: 20           # 自动选择池保底最少节点数
-    max_pool_size: 120          # 自动选择池最大容量上限 (防测速风暴，默认120)
+```
+sources.yaml (17 个源，默认启用 10 个)
+        │
+        ▼
+core/fetcher.py   并发抓取（异步 httpx，动态日期 URL、递归源、私有源）
+        │
+        ▼
+core/parser.py    解析 ss / vmess / vless / trojan / hysteria2 → Node
+        │
+        ▼
+core/processor.py 去重 / 校验 / 名称清洗 / 地区识别
+        │
+        ▼
+core/tester.py    ★ 并发 TCP 测速 → 标记 _latency_ms → 剔除死节点
+        │
+        ▼
+core/generator.py 智能池（地区分组 + 质量评分，评分纳入实测延迟）→ Clash YAML + 策略组 + 规则
+        │
+        ▼
+CI 自检 → 提交到仓库 + docs/ (Pages) → 客户端自动更新
 ```
 
-> [!TIP]
-> **数值填写规则（防呆安全保障）：**
-> - **正整数 $N > 0$**：最多入选前 $N$ 个高质量节点；
-> - **置空 / `null` / 删除该项**：**安全防呆回退**，自动使用推荐默认值（如 12、3、1），误删数字绝不会引发测速风暴；
-> - **填 `-1`**：**无限制（Unlimited）**，符合条件的节点全量入选自动选择池；
-> - **填 `0`**：**禁用**，该项节点完全不进入自动选择池（仅保留在专属分组和地区分组中）。
-
----
-
-### 3. Clash 策略组分流与容灾自愈机制
-
-当检测到私有节点存在时，MetaFetch 会动态编排如下分层策略组：
-
-```yaml
-proxy-groups:
-  - name: 🚀 选择代理
-    type: select
-    proxies:
-      - 👑 私有节点      # [动态生成] 首页第一位，与免费节点完全物理隔离
-      - ♻️ 自动选择      # [私有置顶 + 公共兜底] 适合日常使用，私有故障秒切公共
-      - 🔰 延迟最低      # [全员竞速打擂台] 实测测速最低者胜出，超时自动淘汰
-      - 🗺️ 选择地区      # 按地区分组查看
-      - ✅ 手动选择      # 全量有效节点列表
-      - DIRECT
-```
-
-1. **`👑 私有节点` 专属策略组：**
-   包含所有私有节点 + `⚡ 自动选择 | 👑 私有节点`（Fallback 测速组）。想纯用付费/自建 VPS 时一键直达，不与免费节点混杂。
-2. **`♻️ 自动选择`（双保险容灾机制）：**
-   精选私有节点排在列表最前列，公共优质节点紧随其后。平时优先享受私有节点速度；**当私有节点超时（>2000ms）或故障断网时，Clash Fallback 探针毫秒级自动跳过，无缝切换到公共节点接管**，网络永不断线！
-3. **`🔰 延迟最低`（纯性能打擂台）：**
-   私有与公共精选节点同时测速，只要私有节点超时连不上即被淘汰，通畅时优先选延迟最低的节点。
-4. **国内域名极速直连规则：**
-   集成 `GEOSITE,cn,DIRECT` 与 `GEOIP,CN,DIRECT`，彻底避免国内主流非 `.cn` 网站（B站、百度、QQ、淘宝、京东等）误走代理。
-
----
-
-### 4. 本地运行与调试步骤
+## 本地运行
 
 ```bash
-git clone --depth=1 https://github.com/lanzm/MetaFetch.git
-cd MetaFetch
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
-# (可选) 若需要在本地调试私有节点，创建本地私密文件 private_sources.yaml：
-# echo "sources: [{name: '测试私有', url: 'https://...'}]" > private_sources.yaml
-
+# 完整流水线（含真实测速）
 python main.py
+
+# 仅跑测试
+python -m unittest discover tests -v
 ```
 
----
+## 可配置项
 
-## 🏗️ 架构与处理流程
+### Repository Variables（Settings → Secrets and variables → Actions → Variables）
 
-```mermaid
-graph LR
-    A[📡 优质多源并发抓取<br/>Speedtest实测源 / Hy2专属 / 聚合池] --> B[🔓 智能解包清洗<br/>Base64 / YAML / URI / 垃圾过滤]
-    B --> C[🗺️ 全球地区精准归类<br/>count>0即建组 / Emoji国旗补全]
-    C --> D[👑 雨露均沾智能精选<br/>每国上限6节点 / 实测标记优先]
-    D --> E[📦 多格式高可用生成<br/>Clash Meta / 2s快速熔断]
-    E --> F[🤖 GitHub Actions<br/>全自动化 CI 构建与分发]
-    E --> G[📢 Telegram Channel<br/>实时健康看板广播]
-```
+| 变量 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| `SPEEDTEST_ENABLED` | `true` | 是否开启测速；关掉可恢复上游纯聚合行为 |
+| `SPEEDTEST_TIMEOUT` | `3` | 单个节点 TCP 连接超时（秒） |
+| `SPEEDTEST_WORKERS` | `120` | 并发探测数 |
+| `SPEEDTEST_MAX_NODES` | `2000` | 最多探测多少节点，防止 CI 超时 |
+| `SPEEDTEST_DROP_DEAD` | `true` | 是否剔除不可达节点 |
+| `ANNOTATE_LATENCY` | `true` | 是否在节点名附加 `⚡xxms` |
 
----
+### Secrets
 
-## ✨ 核心特性
+- `PRIVATE_SOURCES`：私有订阅源（YAML 或 list），可选。私有节点会以 👑 标记并豁免测速。
+- `TG_BOT_TOKEN` / `TG_CHAT_ID`：Telegram 通知，可选。
 
-- **👑 实测高带宽优先**：重点聚合自带 Speedtest 测速验证的 `speednode` 节点与实测 `MB/s` 带宽标记节点，拒绝盲目爬取死节点。
-- **🌐 雨露均沾智能精选**：对全球 30+ 独立境外地区均摊抽样（每国上限 5~6 个节点），彻底解决单一国家霸屏问题，冷门坚挺与主流低延时兼备。
-- **⚡ 毫秒级自愈与国内 100% 隔离**：设置 `timeout: 2000`（2 秒熔断切走备用）与 `interval: 60`（1 分钟定期保活自愈），100% 隔离排除中国国内节点。
-- **🛡️ 严格合法性过滤**：自动清洗非法/回环 Server（`0.0.0.0`, `127.0.0.1` 等），智能修正 Shadowsocks 插件参数。
-- **🗺️ 全球无死角归类**：只要抓取到节点即独立建组（`count > 0`），冷门小众国家节点不再被吞没。
+## 配置源文件
 
----
+编辑 [`sources.yaml`](sources.yaml)：每个源支持 `name`、`url`、`enabled`、`ignore`、`recursive`、
+`verify_tls`、`note`。URL 中的 `%Y` `%m` `%d` 会自动替换为当天日期（适合日抛源）。
+`settings.smart_pool` 控制智能池各地区配额和总容量。
 
-## ❓ 常见问题 (FAQ)
+## 已知边界
 
-<details>
-<summary><b>Q1: 为什么现在的「♻️ 自动选择」测速快且连通率高？</b></summary>
-<p>本项目采用了<b>「雨露均沾智能精选算法」</b>，从全球 30+ 独立境外地区中精选约 80~130 个带 <code>speednode</code> 和 <code>MB/s</code> 测速标记的优质节点，不再让客户端同时轮询几千个死节点，测速毫秒级完成，杜绝卡顿与发热。</p>
-</details>
+- 测速是 **TCP 连接延迟**，不是真实带宽下载测速；GitHub Actions runner 多在海外，
+  延迟数据仅作排序参考，不代表中国大陆的实际可用性。
+- Hysteria2 走 UDP，TCP 探测无法覆盖，这类节点默认保留（豁免）。
+- 公开免费节点随时可能失效或被滥用，请勿用于敏感账号或生产环境。
+- 请遵守所在地区的法律法规和相关服务条款。
 
-<details>
-<summary><b>Q2: 为什么「自动选择」里会有罗马尼亚、芬兰等冷门国家？</b></summary>
-<p>主流地区（港日美）在晚高峰或封锁期容易拥堵，而冷门小众国家（如罗马尼亚、芬兰、荷兰等）由于使用人数极少，带宽充足且极少受到 GFW 干扰，稳定性极其出色。多国均摊能确保在主流地区波动时秒级平滑接盘。</p>
-</details>
+## License
 
-<details>
-<summary><b>Q3: CDN 加速链接与 GitHub 直连链接有什么区别？</b></summary>
-<p><b>CDN 加速链接</b>（jsDelivr）在国内网络环境下下载更快更稳，但通常存在几分钟的边缘缓存；<b>GitHub 直连链接</b>保证秒级最新数据，但在部分网络环境下需要梯子环境访问。</p>
-</details>
-
-<details>
-<summary><b>Q4: 免费节点安全吗？可以用来登录个人账号吗？</b></summary>
-<p><b>严禁</b>使用任何公开免费代理节点登录网上银行、支付软件、个人邮箱等涉及重要隐私的账号！公开节点仅供学术研究、资料检索与开发调试使用。</p>
-</details>
-
-<details>
-<summary><b>Q5: 为什么节点列表里有「📢 订阅信息」，而且提示“请勿选择”？</b></summary>
-<p>该策略组是专用于展示<b>当前订阅更新时间、有效节点总数、官方 GitHub 和 Telegram 频道</b>的公告牌。组内使用的是本地安全回环地址（<code>127.0.0.1</code>）占位，<b>仅供信息展示，无法用于联网</b>。日常使用请保持选中「♻️ 自动选择」或具体的国家地区组。</p>
-</details>
-
-<details>
-<summary><b>Q6: 客户端导入订阅链接提示“下载失败”或“Network Error”怎么办？</b></summary>
-<p>1. 优先使用 <b>📡 CDN 加速链接</b>（jsDelivr 对国内网络直连更友好）；<br/>
-2. 若当前设备完全无代理导致 CDN 受到运营商偶然干扰，可尝试切换网络（如手机热点）或换用备用直连；<br/>
-3. 检查客户端是否勾选了强制校验严格 SSL 证书，或检查本机系统时间是否与北京时间同步。</p>
-</details>
-
-<details>
-<summary><b>Q7: 订阅多久更新一次？客户端需要经常手动更新吗？</b></summary>
-<p>本项目配置为全天自动定时抓取清洗，但受 <b>GitHub Actions 全球任务排队拥堵机制</b> 影响，实际执行间隔通常在 <b>2~4 小时不等</b>。建议在客户端（如 Clash Verge / FlClash / 小火箭）中开启<b>「自动更新订阅」</b>功能（建议设置为 120~360 分钟自动刷新），无需每次手动点更新。</p>
-</details>
-
-<details>
-<summary><b>Q8: 批量测速时为什么会有部分节点显示超时（Timeout）或红字？</b></summary>
-<p>1. 免费公共节点受各地上游网络波动影响，偶有单点失效属于正常现象；<br/>
-2. 部分新型协议（如 <b>Hysteria2</b>）采用 UDP 传输，若你当前所处的网络环境（如部分校园网、公司内网）严格封锁了 UDP 流量，可能会导致该类节点测速超时；<br/>
-3. 强烈推荐日常直接连接 <b>「♻️ 自动选择」</b> 策略组，内核会自动每 60 秒定期保活并毫秒级切走失效节点，完全无需手动逐个测速挑节点。</p>
-</details>
-
----
-
-## 📈 Star 历史趋势
-
-[![Star History Chart](https://api.star-history.com/svg?repos=lanzm/MetaFetch&type=Date)](https://star-history.com/#lanzm/MetaFetch&Date)
-
----
-
-## ⚠️ 免责声明
-
-1. **仅供学习与交流使用**：本项目（包括所有相关代码、脚本及文档）仅供进行计算机网络测试、学术交流及科研学习之最终目的。
-2. **不对资源的安全性负责**：本项目提供的所有节点数据均系按照自动化程序爬取自互联网公开渠道。**开发者对任何节点的安全性、可用性、隐私性或网速不提供任何担保**。
-3. **数据隐私风险提示**：强烈建议使用者**切莫**使用本项目的代理环境进行涉及网银、个人隐私、敏感信息的账户操作！
-4. **法律与合规指引**：使用者在获取或使用本项目等内容时，必须严格遵守当地的所有适用法律法规。任何因非法滥用本项目工具/节点所引发的一切违法违规行为及相关法律后果，均由使用者本人自行全部承担。开发者不负任何连带责任。
-5. **严禁商业用途**：项目代码属于完全免费的开源代码，作者从未授权任何个人和组织将本项目的产出或代码用于任何商业牟利行为。
-
----
-*Generated & Updated Automatically by **MetaFetch Engine***
+MIT（继承自上游 MetaFetch，见 [LICENSE](LICENSE)）。

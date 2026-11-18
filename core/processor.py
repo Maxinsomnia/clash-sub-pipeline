@@ -29,7 +29,7 @@ NOTICE_NODE_KEYWORDS = (
 GROUP_NAMES = {f"{info['emoji']} {info['name']}" for info in REGIONS_DB.values()}
 GROUP_NAMES.add('🌍 其他地区')
 GROUP_NAMES.update([f"⚡ 自动选择 | {name}" for name in list(GROUP_NAMES)])
-GROUP_NAMES.update({'🚀 选择代理', '🗺️ 选择地区', '♻️ 自动选择', '🔰 延迟最低', '✅ 手动选择', '📢 订阅信息', '👑 私有节点', '⚡ 自动选择 | 👑 私有节点', 'DIRECT', 'REJECT', 'PASS'})
+GROUP_NAMES.update({'🚀 选择代理', '🗺️ 选择地区', '♻️ 自动选择', '🔰 延迟最低', '✅ 手动选择', '📢 订阅信息', '🤖 AI 服务', '🛑 广告拦截', '👑 私有节点', '⚡ 自动选择 | 👑 私有节点', 'DIRECT', 'REJECT', 'PASS'})
 
 # 引入通用网络地址与安全校验工具（防 SSRF，保留当前模块导出以保持兼容）
 from utils.validators import is_invalid_or_private_server, INVALID_SERVERS

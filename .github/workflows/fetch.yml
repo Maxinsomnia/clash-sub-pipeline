@@ -1,4 +1,4 @@
-name: MetaFetch Fetch Update
+name: Clash Subscription Auto Update
 
 on:
   push:
@@ -9,25 +9,29 @@ on:
       - 'list.*'
       - 'docs/**'
   schedule:
-    - cron: '37 */4 * * *'  # 每 4 小时调度一次（主要服务于 Fork 用户，开箱即用自动更新）
-  workflow_dispatch:      # 支持手动触发及外部 API (Cloudflare Workers) 调用
+    - cron: '37 */4 * * *'  # 避开整点，每 4 小时更新一次
+  workflow_dispatch:
 
 permissions:
   contents: write
 
-# 限制单任务运行，防止定时调度与代码提交产生冲突
 concurrency:
-  group: meta-fetch-sync
+  group: clash-sub-pipeline-sync
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 主仓库由 Cloudflare Workers 外部高精定时托管，忽略自带 schedule 避免排队冲突；Fork 仓库则全自动启用原生 schedule
-    if: github.repository != 'lanzm/MetaFetch' || github.event_name != 'schedule'
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       TZ: Asia/Shanghai
+      # ---- 测速参数（可用 Repository Variables 覆盖，无需改代码）----
+      SPEEDTEST_ENABLED: ${{ vars.SPEEDTEST_ENABLED || 'true' }}
+      SPEEDTEST_TIMEOUT: ${{ vars.SPEEDTEST_TIMEOUT || '3' }}
+      SPEEDTEST_WORKERS: ${{ vars.SPEEDTEST_WORKERS || '120' }}
+      SPEEDTEST_MAX_NODES: ${{ vars.SPEEDTEST_MAX_NODES || '2000' }}
+      SPEEDTEST_DROP_DEAD: ${{ vars.SPEEDTEST_DROP_DEAD || 'true' }}
+      ANNOTATE_LATENCY: ${{ vars.ANNOTATE_LATENCY || 'true' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -46,20 +50,98 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run Unit Tests
-        run: |
-          python -m unittest discover tests -v
+        run: python -m unittest discover tests -v
 
-      - name: Run Fetch Task
+      - name: Fetch, Probe and Generate Subscription
         env:
           PRIVATE_SOURCES: ${{ secrets.PRIVATE_SOURCES }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python main.py
+
+      # ---- 订阅自检：防止把坏配置推送给用户（借鉴 free-proxy-airport）----
+      - name: Validate Generated Clash Subscription
         run: |
-          python main.py
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("list.meta.yml")
+          data = yaml.safe_load(path.read_text(encoding="utf-8"))
+          if not isinstance(data, dict):
+              raise SystemExit("list.meta.yml is not a YAML mapping")
+
+          for key in ("proxies", "proxy-groups", "rules"):
+              if not data.get(key):
+                  raise SystemExit(f"missing or empty required key: {key}")
+
+          groups = {g.get("name"): g for g in data["proxy-groups"] if isinstance(g, dict)}
+          required = {
+              "🚀 选择代理": "select",
+              "♻️ 自动选择": "fallback",
+              "🔰 延迟最低": "url-test",
+              "🤖 AI 服务": "select",
+              "🛑 广告拦截": "select",
+          }
+          for name, gtype in required.items():
+              group = groups.get(name)
+              if not group:
+                  raise SystemExit(f"missing proxy group: {name}")
+              if group.get("type") != gtype:
+                  raise SystemExit(f"{name} must be {gtype}, got {group.get('type')}")
+              if not group.get("proxies"):
+                  raise SystemExit(f"proxy group {name} has no proxies")
+
+          for rule in (
+              "DOMAIN-SUFFIX,openai.com,🤖 AI 服务",
+              "DOMAIN-SUFFIX,claude.ai,🤖 AI 服务",
+              "GEOIP,CN,DIRECT",
+              "MATCH,🚀 选择代理",
+          ):
+              if rule not in data["rules"]:
+                  raise SystemExit(f"missing rule: {rule}")
+
+          names = {p.get("name") for p in data["proxies"] if isinstance(p, dict)}
+          builtins = {"DIRECT", "REJECT", "PASS"}
+          dangling = []
+          for group in data["proxy-groups"]:
+              for target in group.get("proxies") or []:
+                  if target not in names and target not in groups and target not in builtins:
+                      dangling.append(f"{group.get('name')} -> {target}")
+          if dangling:
+              raise SystemExit("dangling references in proxy groups:\n" + "\n".join(dangling[:20]))
+
+          print(f"Validation OK: {len(names)} proxies, {len(groups)} groups, {len(data['rules'])} rules")
+          PY
+
+      - name: Prepare Pages output
+        run: |
+          mkdir -p docs
+          cp list.meta.yml docs/clash.yaml
+          cp list.b64 docs/clash.b64
+          cp list.txt docs/nodes.txt
+          touch docs/.nojekyll
+          echo "Pages files:" && ls -lh docs/
 
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add list.meta.yml list.b64 list.txt README.md tg_msg_id.txt 2>/dev/null || git add list.meta.yml list.b64 list.txt README.md
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto Update: $(date +'%Y-%m-%d %H:%M:%S')" && git pull --rebase origin master && git push origin master)
+          git add list.meta.yml list.b64 list.txt README.md tg_msg_id.txt docs/ 2>/dev/null || git add list.meta.yml list.b64 list.txt README.md docs/
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto Update: $(date +'%Y-%m-%d %H:%M:%S')"
+            git pull --rebase origin master
+            git push origin master
+          fi
+
+      - name: Upload artifact snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-subscription
+          path: |
+            list.meta.yml
+            list.b64
+            list.txt
+          retention-days: 7

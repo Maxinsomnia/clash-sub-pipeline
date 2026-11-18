@@ -7,6 +7,7 @@ import yaml
 from core.fetcher import parallel_fetch
 from core.processor import NodeProcessor
 from core.generator import Generator
+from core.tester import probe_nodes_async, speedtest_config
 from utils.stats import update_readme_all, prepare_source_stats
 from utils.notify import send_tg_notification
 from utils.logger import logger
@@ -135,7 +136,38 @@ async def main():
     if not processed_nodes:
         logger.error("All fetched nodes were rejected during validation; keeping existing generated subscriptions unchanged.")
         return
-    
+
+    # 3.5 Connectivity + latency probe (borrowed from subs-check / clash_node_update).
+    # Runs after dedup so we never waste probe slots on duplicates. Dead nodes get
+    # dropped; Hysteria2 and private nodes are exempt. Disable with SPEEDTEST_ENABLED=false.
+    cfg = speedtest_config()
+    if cfg["enabled"]:
+        before = len(processed_nodes)
+        processed_nodes, probe_stats = await probe_nodes_async(
+            processed_nodes,
+            timeout=cfg["timeout"],
+            workers=cfg["workers"],
+            max_nodes=cfg["max_nodes"],
+            drop_dead=cfg["drop_dead"],
+        )
+        if not processed_nodes:
+            logger.error("All nodes failed the connectivity probe; keeping existing subscriptions unchanged.")
+            return
+        logger.info(f"Probe kept {len(processed_nodes)}/{before} nodes.")
+    else:
+        logger.info("Speedtest disabled via SPEEDTEST_ENABLED.")
+
+    # 3.6 Annotate names with measured latency for human readability (optional).
+    # Region was resolved in processor and stored in _region, so renaming here
+    # does not break region groups.
+    if os.getenv("ANNOTATE_LATENCY", "true").lower() not in ("0", "false", "no", "off"):
+        for node in processed_nodes:
+            latency = node.data.get("_latency_ms")
+            if isinstance(latency, (int, float)) and not node.data.get("_is_private"):
+                suffix = f" ⚡{int(latency)}ms"
+                if suffix not in node.data["name"]:
+                    node.data["name"] = f"{node.data['name']}{suffix}"
+
     # 4. Generate Output (Merge with template)
     if not os.path.exists(TEMPLATE_FILE):
         logger.warning(f"{TEMPLATE_FILE} not found. Using node list only.")

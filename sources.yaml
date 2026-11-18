@@ -42,6 +42,21 @@ settings:
 
 sources:
   # ==========================================
+  # 🆕 本地新增源（GitHub Actions 自动测速 + 分组）
+  # ==========================================
+  - name: "🧪 free-proxy-airport (30min 自测速 + 健康评分)"
+    url: "https://raw.githubusercontent.com/sunmiao4458/free-proxy-airport/main/docs/clash.yaml"
+    note: "上游每 30 分钟真实延迟测试并按健康评分分组"
+
+  - name: "📊 V2RayAggregator Eternity (12h LiteSpeedTest 筛选)"
+    url: "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity.yml"
+    note: "老牌聚合器，上游用 LiteSpeedTest 按平均速度排序筛选 (含机场组)"
+
+  - name: "🔗 AutoMergePublicNodes (3h 抓取合并)"
+    url: "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/master/list.yml"
+    note: "你 star 过的源，全网公开节点合并 + 智能分流规则"
+
+  # ==========================================
   # 👑 实测高可用源：上游已进行真实测速 / 连通性测试
   # ==========================================
   - name: "🏆 huiwin NodeCollection (4h 自动测速清洗)"

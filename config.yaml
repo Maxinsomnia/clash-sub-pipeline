@@ -55,11 +55,40 @@ proxy-groups:
     type: select
     proxies: [] # Will be filled with all nodes
 
+  - name: 🤖 AI 服务
+    type: select
+    proxies:
+      - 🚀 选择代理
+      - ♻️ 自动选择
+      - 🔰 延迟最低
+      - ✅ 手动选择
+
+  - name: 🛑 广告拦截
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+
   - name: 📢 订阅信息
     type: select
     proxies: [] # Will be filled with info nodes
 
 rules:
+  # --- AI 服务优先走代理（来自 free-proxy-airport 的分流思路）---
+  - DOMAIN-SUFFIX,openai.com,🤖 AI 服务
+  - DOMAIN-SUFFIX,chatgpt.com,🤖 AI 服务
+  - DOMAIN-SUFFIX,anthropic.com,🤖 AI 服务
+  - DOMAIN-SUFFIX,claude.ai,🤖 AI 服务
+  - DOMAIN-SUFFIX,gemini.google.com,🤖 AI 服务
+  - DOMAIN-SUFFIX,cursor.com,🤖 AI 服务
+  - DOMAIN-KEYWORD,openai,🤖 AI 服务
+  - DOMAIN-KEYWORD,anthropic,🤖 AI 服务
+  - DOMAIN-KEYWORD,claude,🤖 AI 服务
+  - DOMAIN-KEYWORD,gemini,🤖 AI 服务
+
+  # --- 广告拦截 ---
+  - GEOSITE,category-ads-all,🛑 广告拦截
+
   - DOMAIN-SUFFIX,google.com,🚀 选择代理
   - DOMAIN-KEYWORD,google,🚀 选择代理
   - DOMAIN-SUFFIX,github.com,🚀 选择代理
