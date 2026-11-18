@@ -18,7 +18,8 @@
 - ✅ **延迟可见**：节点名附带 `⚡123ms` 标签，方便在客户端里肉眼挑快的。
 - ✅ **AI 智能分流**：新增 `🤖 AI 服务` 策略组，OpenAI / Claude / Anthropic / Gemini / Cursor 等域名优先走代理；
   新增 `🛑 广告拦截` 组。
-- ✅ **订阅自检**：CI 推送前校验 YAML 结构、必需策略组、关键规则、策略组悬空引用，防止推坏配置。
+- ✅ **订阅自检**：CI 推送前校验 YAML 结构、必需策略组、关键规则、策略组悬空引用；
+  并用**真正的 Mihomo 内核**（`clash -t`）加载配置，捕获 SS2022 非法密钥等会让客户端报"输入不合法"的致命错误。
 - ✅ **GitHub Pages 分发**：`docs/` 目录输出 `clash.yaml` / `clash.b64` / `nodes.txt`，可在仓库 Settings → Pages
   里设置为「Deploy from a branch → master / docs」获得稳定公开订阅链接。
 - ✅ **源扩充**：新增你 star 过的 `chengaopan/AutoMergePublicNodes`、`mahdibland/V2RayAggregator`、
@@ -26,14 +27,15 @@
 
 ## 订阅链接
 
-仓库 Actions 首次成功运行后可用：
+> ⚠️ **优先用 Pages 链接**：`raw.githubusercontent.com` 的 CDN 有时会缓存旧内容（实测滞后可达数十分钟），
+> 遇到"输入不合法"或节点没更新时先换 Pages 链接。Pages 链接已启用并稳定。
 
-| 客户端 | 订阅地址 |
+| 客户端 | 订阅地址（推荐度从高到低） |
 | :--- | :--- |
-| Clash Verge / Mihomo Party / FlClash / Stash | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.meta.yml` |
-| Shadowrocket / v2rayN / Quantumult X | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.b64` |
-| 明文节点（Sub-Store 等） | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.txt` |
-| GitHub Pages（需在 Settings 启用） | `https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml` |
+| **Clash / ClashX Meta / Mihomo（推荐）** | `https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml` |
+| Clash（备用） | `https://raw.githubusercontent.com/Maxinsomnia/clash-sub-pipeline/master/list.meta.yml` |
+| Shadowrocket / v2rayN / Quantumult X | `https://maxinsomnia.github.io/clash-sub-pipeline/clash.b64` |
+| 明文节点（Sub-Store 等） | `https://maxinsomnia.github.io/clash-sub-pipeline/nodes.txt` |
 
 > 也可走 jsDelivr CDN 加速：`https://cdn.jsdelivr.net/gh/Maxinsomnia/clash-sub-pipeline@master/list.meta.yml`
 
