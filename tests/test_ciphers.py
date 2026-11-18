@@ -1,5 +1,9 @@
+import base64
 import unittest
-from utils.ciphers import normalize_ss_cipher, is_valid_ss_cipher, SS_CIPHER_ALIASES, VALID_SS_CIPHERS
+from utils.ciphers import (
+    normalize_ss_cipher, is_valid_ss_cipher, is_valid_ss_password,
+    SS_CIPHER_ALIASES, VALID_SS_CIPHERS,
+)
 from core.parser import Node
 from core.processor import NodeProcessor
 
@@ -84,6 +88,38 @@ class TestCiphers(unittest.TestCase):
         # 3. clean_and_rename 同样保证正确性
         cleaned = proc.clean_and_rename(valid)
         self.assertEqual(cleaned[0].data['cipher'], 'chacha20-ietf-poly1305')
+
+    def test_ss2022_password_validation(self):
+        # Traditional ciphers accept any password
+        self.assertTrue(is_valid_ss_password('aes-128-gcm', 'anything'))
+        self.assertTrue(is_valid_ss_password('chacha20-ietf-poly1305', 'not-base64!'))
+        # Missing password for SS2022 is invalid
+        self.assertFalse(is_valid_ss_password('2022-blake3-aes-128-gcm', ''))
+        # Valid SS2022 keys (16 bytes for aes-128-gcm, 32 bytes otherwise)
+        key16 = base64.b64encode(b'0' * 16).decode()
+        key32 = base64.b64encode(b'0' * 32).decode()
+        self.assertTrue(is_valid_ss_password('2022-blake3-aes-128-gcm', key16))
+        self.assertTrue(is_valid_ss_password('2022-blake3-chacha20-poly1305', key32))
+        self.assertTrue(is_valid_ss_password('2022-blake3-aes-256-gcm', key32))
+        # Wrong lengths and invalid base64 must be rejected
+        self.assertFalse(is_valid_ss_password('2022-blake3-aes-128-gcm', key32))
+        self.assertFalse(is_valid_ss_password('2022-blake3-chacha20-poly1305', key16))
+        self.assertFalse(is_valid_ss_password('2022-blake3-chacha20-poly1305', 'qG5HzrJO2OAzMFY6WDz9'))
+        self.assertFalse(is_valid_ss_password('2022-blake3-chacha20-poly1305', 'not base64 @@@'))
+
+    def test_processor_drops_ss2022_bad_key(self):
+        # Reproduces the exact node that broke the live subscription
+        bad = Node({
+            'name': 'bad-ss2022', 'type': 'ss', 'server': '1.2.3.4', 'port': 443,
+            'cipher': '2022-blake3-chacha20-poly1305',
+            'password': 'qG5HzrJO2OAzMFY6WDz9',
+        })
+        good = Node({
+            'name': 'good-ss', 'type': 'ss', 'server': '5.6.7.8', 'port': 443,
+            'cipher': 'aes-128-gcm', 'password': 'whatever',
+        })
+        kept = NodeProcessor().filter_invalid([bad, good])
+        self.assertEqual([n.name for n in kept], ['good-ss'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,9 +1,9 @@
 # Clash Sub Pipeline
 
 <!-- STATS_BADGE_START -->
-![Update](https://img.shields.io/badge/Updated-2026--11--19_00%3A17%3A02-green.svg?style=flat-square)
-![Nodes](https://img.shields.io/badge/Valid_Nodes-336-orange.svg?style=flat-square)
-![Sources](https://img.shields.io/badge/Active_Sources-10-blue.svg?style=flat-square)
+![Update](https://img.shields.io/badge/Updated-2026--11--19_01%3A03%3A15-green.svg?style=flat-square)
+![Nodes](https://img.shields.io/badge/Valid_Nodes-374-orange.svg?style=flat-square)
+![Sources](https://img.shields.io/badge/Active_Sources-9-blue.svg?style=flat-square)
 <!-- STATS_BADGE_END -->
 
 > 基于 [lanzm/MetaFetch](https://github.com/lanzm/MetaFetch) (MIT) fork 二次开发。

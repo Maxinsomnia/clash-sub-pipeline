@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import List, Set, Dict, Any
 from core.parser import Node
 from utils.regions import REGIONS_DB, match_region
-from utils.ciphers import normalize_ss_cipher, is_valid_ss_cipher
+from utils.ciphers import normalize_ss_cipher, is_valid_ss_cipher, is_valid_ss_password
 from utils.logger import logger
 
 # 清理广告与多余链接的预编译正则
@@ -150,6 +150,10 @@ class NodeProcessor:
                         continue
                     norm_cipher = normalize_ss_cipher(n_data.get('cipher'))
                     if not is_valid_ss_cipher(norm_cipher):
+                        continue
+                    if not is_valid_ss_password(norm_cipher, n_data.get('password')):
+                        # SS2022 with an invalid base64 key makes Mihomo reject
+                        # the ENTIRE config, not just this node. Drop it here.
                         continue
                     n_data['cipher'] = norm_cipher
                     # 校验 Shadowsocks plugin

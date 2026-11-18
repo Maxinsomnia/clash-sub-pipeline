@@ -114,6 +114,13 @@ jobs:
           print(f"Validation OK: {len(names)} proxies, {len(groups)} groups, {len(data['rules'])} rules")
           PY
 
+      # ---- 内核级校验：用真正的 Mihomo 内核加载配置，捕获 SS2022 非法密钥等致命错误 ----
+      # 单个坏节点会让内核拒绝整份配置（ClashX Meta 报"输入不合法"），必须在发布前拦下
+      - name: Validate with Mihomo Kernel
+        env:
+          MIHOMO_VERSION: v1.19.34
+        run: python scripts/validate_with_kernel.py list.meta.yml
+
       - name: Prepare Pages output
         run: |
           mkdir -p docs

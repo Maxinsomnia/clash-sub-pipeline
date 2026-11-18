@@ -1,3 +1,5 @@
+import base64
+import binascii
 from typing import Optional
 
 # Shadowsocks 常见非标准别名 -> Clash / Mihomo 官方标准名称映射表
@@ -65,3 +67,28 @@ def is_valid_ss_cipher(cipher: Optional[str]) -> bool:
         return False
     norm = normalize_ss_cipher(cipher)
     return norm in VALID_SS_CIPHERS
+
+
+def is_valid_ss_password(cipher: Optional[str], password: Optional[str]) -> bool:
+    """
+    校验 SS 密码是否与加密算法兼容。
+
+    Shadowsocks 2022 (2022-blake3-*) 的密码必须是合法的 base64 编码，
+    且解码后长度必须为 32 字节 (aes-256-gcm / chacha20-poly1305) 或
+    16 字节 (aes-128-gcm)。这类节点若密钥非法，Mihomo 内核会在加载配置时
+    直接报错并导致整份订阅不可用，因此必须在生成阶段剔除。
+    传统 AEAD / 流加密 Cipher 的密码可以是任意字符串，不做限制。
+    """
+    c = normalize_ss_cipher(cipher)
+    if not c.startswith('2022-blake3'):
+        return True
+    if not password:
+        return False
+    pwd = str(password).strip()
+    try:
+        # Clash 要求标准 base64；补齐 padding 后严格解码
+        key = base64.b64decode(pwd + '=' * (-len(pwd) % 4), validate=True)
+    except (binascii.Error, ValueError):
+        return False
+    expected = 16 if c == '2022-blake3-aes-128-gcm' else 32
+    return len(key) == expected
