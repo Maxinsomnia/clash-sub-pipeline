@@ -77,7 +77,8 @@ sources:
 
   - name: "📡 shaoyouvip 每日实测"
     url: "https://raw.githubusercontent.com/shaoyouvip/free/main/base64.txt"
-    note: "每日实测测速更新 (纯净 VLESS/SS，带 MB/s 速率标签)"
+    enabled: false
+    note: "【停用】2026-11 实测源内已无可解析节点"
 
   - name: "🐱 PuddinCat BestClash (30min 实测)"
     url: "https://raw.githubusercontent.com/PuddinCat/BestClash/main/proxies.yaml"
