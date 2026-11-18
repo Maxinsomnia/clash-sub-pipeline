@@ -88,11 +88,27 @@ python scripts/local_probe.py
 python scripts/local_probe.py \
   --url https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml \
   --output my-clash.yaml --workers 40 --timeout 5000
+
+# 跳过 AI 检测（不做 Gemini 分组）
+python scripts/local_probe.py --skip-ai
 ```
 
 脚本会自动从 `/Applications/ClashX Meta.app` 提取内置 Mihomo 内核（可用
-`MIHOMO_BIN` 覆盖），对每个节点发起真实 HTTP 请求，剔除失败节点并清理策略组
-里的悬空引用。把输出的**文件**通过 ClashX Meta 的「配置 → 导入 → 本地文件」加载。
+`MIHOMO_BIN` 覆盖），并做**两阶段真实 HTTP 测速**：
+
+1. **通用可达性**（`--test-url`，默认 Cloudflare `generate_204`）——剔除本机连不通的节点。
+2. **AI 可达性**（`--ai-url`，默认 Gemini API discovery 端点）——只对第 1 步存活的节点测，
+   用能否连到 Gemini 判断该节点是否可用于 OpenAI/Gemini 等 AI 服务。
+
+输出配置会：
+- 删除**没有任何健康节点**的地区策略组及其菜单引用；
+- 新增 `🤖 AI 可用节点`（能连 Gemini）和 `🌐 普通节点`（仅通用可达）两个 fallback 组，
+  并加入主菜单与 AI 服务组；AI 规则优先走 AI 组；
+- 清理所有悬空引用，输出可直接被 Mihomo 内核加载。
+
+把输出的**文件**通过 ClashX Meta 的「配置 → 导入 → 本地文件」加载。
+建议每天或感觉节点变慢时重跑一次。实测参考：285 节点中约 36 个本机可用，
+其中 32 个可连 Gemini。
 建议每天或感觉节点变慢时重跑一次。
 
 ## 可配置项
