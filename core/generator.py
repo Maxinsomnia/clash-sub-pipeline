@@ -174,20 +174,23 @@ class Generator:
         dynamic_groups = []
         region_list_for_menu = []
         
+        # 测试参数：延长间隔并开启 lazy，避免客户端对全部节点周期性并发测速
         test_url = "https://cp.cloudflare.com/generate_204"
-        test_interval = 60
-        test_timeout = 2000
+        test_interval = int(self.pool_settings.get('test_interval', 300))
+        test_timeout = int(self.pool_settings.get('test_timeout', 3000))
+        region_cap = int(self.pool_settings.get('region_group_limit', 12))
+        lazy_mode = str(self.pool_settings.get('lazy', True)).lower() not in ('0', 'false', 'no', 'off')
 
         for key in active_keys:
             group_name = REGION_NAMES[key]
             auto_name = f"⚡ 自动选择 | {group_name}"
             raw_region_nodes = [n for n in region_nodes[key] if n != group_name and n != auto_name]
-            nodes_in_region = sorted(raw_region_nodes, key=get_node_quality_score, reverse=True)
+            nodes_in_region = sorted(raw_region_nodes, key=get_node_quality_score, reverse=True)[:region_cap]
             fallback_proxies = nodes_in_region if nodes_in_region else ['DIRECT']
             dynamic_groups.append({
                 'name': auto_name, 'type': 'fallback', 'url': test_url,
                 'interval': test_interval, 'timeout': test_timeout,
-                'lazy': False, 'hidden': True, 'proxies': fallback_proxies
+                'lazy': lazy_mode, 'hidden': True, 'proxies': fallback_proxies
             })
             dynamic_groups.append({
                 'name': group_name, 'type': 'select',
@@ -199,12 +202,12 @@ class Generator:
             others_group_name = '🌍 其他地区'
             others_auto_name = f"⚡ 自动选择 | {others_group_name}"
             raw_others = [n for n in others if n != others_group_name and n != others_auto_name]
-            others = sorted(raw_others, key=get_node_quality_score, reverse=True)
+            others = sorted(raw_others, key=get_node_quality_score, reverse=True)[:region_cap]
             others_fallback_proxies = others if others else ['DIRECT']
             dynamic_groups.append({
                 'name': others_auto_name, 'type': 'fallback', 'url': test_url,
                 'interval': test_interval, 'timeout': test_timeout,
-                'lazy': False, 'hidden': True, 'proxies': others_fallback_proxies
+                'lazy': lazy_mode, 'hidden': True, 'proxies': others_fallback_proxies
             })
             dynamic_groups.append({
                 'name': others_group_name, 'type': 'select',
@@ -231,7 +234,7 @@ class Generator:
                 'url': test_url,
                 'interval': test_interval,
                 'timeout': test_timeout,
-                'lazy': False,
+                'lazy': lazy_mode,
                 'hidden': True,
                 'proxies': priv_sorted if priv_sorted else ['DIRECT']
             })

@@ -8,6 +8,7 @@ from core.fetcher import parallel_fetch
 from core.processor import NodeProcessor
 from core.generator import Generator
 from core.tester import probe_nodes_async, speedtest_config
+from core.kernel_tester import probe_nodes_kernel, kernel_probe_config
 from utils.stats import update_readme_all, prepare_source_stats
 from utils.notify import send_tg_notification
 from utils.logger import logger
@@ -156,6 +157,23 @@ async def main():
         logger.info(f"Probe kept {len(processed_nodes)}/{before} nodes.")
     else:
         logger.info("Speedtest disabled via SPEEDTEST_ENABLED.")
+
+    # 3.55 Real HTTP proxy probe through the Mihomo kernel (second-stage filter).
+    # TCP connect only proves a port is open; this catches protocol/auth/egress
+    # failures that otherwise show up as "failed" nodes in the client.
+    kcfg = kernel_probe_config()
+    if kcfg["enabled"]:
+        before_kernel = processed_nodes
+        try:
+            processed_nodes, kernel_stats = probe_nodes_kernel(processed_nodes, kcfg)
+            if not processed_nodes:
+                logger.error("Kernel probe rejected every node; falling back to TCP-probe result.")
+                processed_nodes = before_kernel
+        except Exception as e:
+            logger.warning(f"Kernel probe failed ({e}); falling back to TCP-probe result.")
+            processed_nodes = before_kernel
+    else:
+        logger.info("Kernel probe disabled via KERNEL_PROBE_ENABLED.")
 
     # 3.6 Annotate names with measured latency for human readability (optional).
     # Region was resolved in processor and stored in _region, so renaming here

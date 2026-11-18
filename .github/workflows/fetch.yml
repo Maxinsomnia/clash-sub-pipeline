@@ -32,6 +32,12 @@ jobs:
       SPEEDTEST_MAX_NODES: ${{ vars.SPEEDTEST_MAX_NODES || '2000' }}
       SPEEDTEST_DROP_DEAD: ${{ vars.SPEEDTEST_DROP_DEAD || 'true' }}
       ANNOTATE_LATENCY: ${{ vars.ANNOTATE_LATENCY || 'true' }}
+      # ---- 内核级真实 HTTP 代理探测（剔除 TCP 通但代理不可用的节点）----
+      KERNEL_PROBE_ENABLED: ${{ vars.KERNEL_PROBE_ENABLED || 'true' }}
+      KERNEL_PROBE_TIMEOUT: ${{ vars.KERNEL_PROBE_TIMEOUT || '6000' }}
+      KERNEL_PROBE_WORKERS: ${{ vars.KERNEL_PROBE_WORKERS || '40' }}
+      KERNEL_PROBE_MAX_NODES: ${{ vars.KERNEL_PROBE_MAX_NODES || '400' }}
+      KERNEL_PROBE_DROP_DEAD: ${{ vars.KERNEL_PROBE_DROP_DEAD || 'true' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
