@@ -75,6 +75,26 @@ python main.py
 python -m unittest discover tests -v
 ```
 
+### 按你自己的网络筛选节点（推荐）
+
+GitHub Actions 的 runner 在海外，测出的可用性代表的是海外网络。要在国内用，
+用下面的脚本做一次**本地真实 HTTP 代理测速**，生成只含本机可用节点的配置：
+
+```bash
+# 默认从 Pages 订阅读取，结果写入 local-clash.yaml
+python scripts/local_probe.py
+
+# 指定源和输出，可调节并发/超时
+python scripts/local_probe.py \
+  --url https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml \
+  --output my-clash.yaml --workers 40 --timeout 5000
+```
+
+脚本会自动从 `/Applications/ClashX Meta.app` 提取内置 Mihomo 内核（可用
+`MIHOMO_BIN` 覆盖），对每个节点发起真实 HTTP 请求，剔除失败节点并清理策略组
+里的悬空引用。把输出的**文件**通过 ClashX Meta 的「配置 → 导入 → 本地文件」加载。
+建议每天或感觉节点变慢时重跑一次。
+
 ## 可配置项
 
 ### Repository Variables（Settings → Secrets and variables → Actions → Variables）
@@ -87,6 +107,14 @@ python -m unittest discover tests -v
 | `SPEEDTEST_MAX_NODES` | `2000` | 最多探测多少节点，防止 CI 超时 |
 | `SPEEDTEST_DROP_DEAD` | `true` | 是否剔除不可达节点 |
 | `ANNOTATE_LATENCY` | `true` | 是否在节点名附加 `⚡xxms` |
+| `KERNEL_PROBE_ENABLED` | `true` | 是否开启内核级真实 HTTP 代理探测（剔除 TCP 通但代理不可用的节点） |
+| `KERNEL_PROBE_TIMEOUT` | `6000` | 单节点 HTTP 探测超时（毫秒） |
+| `KERNEL_PROBE_WORKERS` | `40` | 内核探测并发数 |
+| `KERNEL_PROBE_MAX_NODES` | `400` | 最多做真实代理探测的节点数 |
+| `KERNEL_PROBE_DROP_DEAD` | `true` | 是否剔除真实探测失败的节点 |
+
+自动选择池容量、地区组上限、测速间隔与 lazy 模式在 `sources.yaml` 的 `settings.smart_pool`
+中配置（`max_pool_size` / `region_group_limit` / `test_interval` / `test_timeout` / `lazy`）。
 
 ### Secrets
 
@@ -101,8 +129,10 @@ python -m unittest discover tests -v
 
 ## 已知边界
 
-- 测速是 **TCP 连接延迟**，不是真实带宽下载测速；GitHub Actions runner 多在海外，
-  延迟数据仅作排序参考，不代表中国大陆的实际可用性。
+- 两级探测：**TCP 连通**（快速预筛）+ **Mihomo 内核真实 HTTP 代理请求**（剔除协议/认证/出口失效的节点）。
+  第二级在 CI 的海外 runner 上运行，代表的仍是海外可用性；本地网络请用 `scripts/local_probe.py` 再筛一次。
+- 自动选择策略组设为 `lazy: true`、300 秒间隔、24 节点上限，地区组每组最多 12 个，
+  避免客户端启动时对数百节点并发测速导致大面积「失败」显示。
 - Hysteria2 走 UDP，TCP 探测无法覆盖，这类节点默认保留（豁免）。
 - 公开免费节点随时可能失效或被滥用，请勿用于敏感账号或生产环境。
 - 请遵守所在地区的法律法规和相关服务条款。
