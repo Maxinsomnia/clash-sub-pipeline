@@ -143,6 +143,35 @@ python scripts/local_probe.py --skip-ai
 `verify_tls`、`note`。URL 中的 `%Y` `%m` `%d` 会自动替换为当天日期（适合日抛源）。
 `settings.smart_pool` 控制智能池各地区配额和总容量。
 
+## 半自动发现新源（source_scout）
+
+想补充新的公开订阅源，但不想让未经筛查的源污染订阅质量？用三步人工审核流水线，
+它**不会自动启用任何源**：
+
+```bash
+# 1. 发现：GitHub 搜索高星节点/订阅仓库 + 已知"订阅清单"仓库，提取候选 URL
+#    （建议设置 GITHUB_TOKEN 提高 API 限额；github CLI 用户可用 GITHUB_TOKEN=$(gh auth token)）
+GITHUB_TOKEN=$(gh auth token) python3 scripts/source_scout.py discover --max-repos 25
+
+# 2. 评估：逐个源抓取节点 + 用本地 Mihomo 内核真实测速，生成质量报告
+python3 scripts/source_scout.py evaluate --min-nodes 5 --min-alive-rate 0.3
+
+# 3. 审核后提升：只把你认可的源追加到 sources.yaml（默认 enabled: false）
+python3 scripts/source_scout.py promote --approve '<报告里的 key>'
+# 或：python3 scripts/source_scout.py promote --approve-all-qualified
+```
+
+- `discover` 自动排除 `sources.yaml` 里已有的 URL，只保留看起来像订阅的
+  raw.githubusercontent / gist 链接（过滤掉源码、配置、图片等误报）。
+- `evaluate` 用本机网络测速，输出 `scout_report.json`，按 `--min-nodes`（最少解析节点数）
+  和 `--min-alive-rate`（最低本机存活率）判定 `qualified`。**在海外 runner 上评估
+  得到的是海外可用性；国内用户应在本地跑这一步。**
+- `promote` 只写入**禁用**条目并附上质量备注，你确认后手动把 `enabled` 改为 `true`。
+  重复运行不会写入重复 URL。
+
+这是一家之言的机制：新发现的公开源死节点/钓鱼订阅比例高，自动纳入会直接抵消
+内核测速带来的可靠性，因此刻意保留人工审核这一道闸。
+
 ## 已知边界
 
 - 两级探测：**TCP 连通**（快速预筛）+ **Mihomo 内核真实 HTTP 代理请求**（剔除协议/认证/出口失效的节点）。
