@@ -1,7 +1,9 @@
 # Clash Sub Pipeline
 
 <!-- STATS_BADGE_START -->
-![Auto Update](https://img.shields.io/github/actions/workflow/status/Maxinsomnia/clash-sub-pipeline/fetch.yml?branch=master&style=flat-square&label=Auto%20Update)
+![Update](https://img.shields.io/badge/Updated-2026--11--19_00%3A17%3A02-green.svg?style=flat-square)
+![Nodes](https://img.shields.io/badge/Valid_Nodes-336-orange.svg?style=flat-square)
+![Sources](https://img.shields.io/badge/Active_Sources-10-blue.svg?style=flat-square)
 <!-- STATS_BADGE_END -->
 
 > 基于 [lanzm/MetaFetch](https://github.com/lanzm/MetaFetch) (MIT) fork 二次开发。
