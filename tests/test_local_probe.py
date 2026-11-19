@@ -105,9 +105,32 @@ class TestBuildCleanConfig(unittest.TestCase):
         self.assertEqual(ai["type"], "fallback")
         self.assertTrue(ai["lazy"])
         self.assertIn("🤖 AI 可用节点", groups["🚀 选择代理"]["proxies"])
-        self.assertIn("🤖 AI 可用节点", groups["🤖 AI 服务"]["proxies"])
         self.assertEqual(stats["ai_nodes"], 1)
         self.assertEqual(stats["normal_nodes"], 1)
+
+    def test_ai_service_defaults_to_ai_group(self):
+        """Clash select groups pick the first proxy as default: AI must be first."""
+        cleaned, _ = local_probe.build_clean_config(
+            sample_config(), self.working, self.ai, args()
+        )
+        groups = {g["name"]: g for g in cleaned["proxy-groups"]}
+        ai_service = groups["🤖 AI 服务"]["proxies"]
+        self.assertEqual(ai_service[0], "🤖 AI 可用节点",
+                         "AI 服务默认项必须是 AI 可用节点")
+        # AI group must come before the general group in the main menu too.
+        main = groups["🚀 选择代理"]["proxies"]
+        self.assertLess(main.index("🤖 AI 可用节点"), main.index("🌐 普通节点"))
+        # Original default (first real proxy) preserved in the main menu.
+        self.assertEqual(main[0], "♻️ 自动选择")
+
+    def test_no_ai_nodes_still_defaults_to_ai_group_with_direct(self):
+        """Even with zero AI nodes, AI group stays the default (falls back to DIRECT)."""
+        cleaned, _ = local_probe.build_clean_config(
+            sample_config(), self.working, {}, args()
+        )
+        groups = {g["name"]: g for g in cleaned["proxy-groups"]}
+        self.assertEqual(groups["🤖 AI 服务"]["proxies"][0], "🤖 AI 可用节点")
+        self.assertEqual(groups["🤖 AI 可用节点"]["proxies"], ["DIRECT"])
 
     def test_no_dangling_references(self):
         cleaned, _ = local_probe.build_clean_config(

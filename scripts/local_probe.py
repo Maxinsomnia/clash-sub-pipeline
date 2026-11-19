@@ -292,17 +292,24 @@ def build_clean_config(original, working, ai_capable, args):
     for group in all_groups:
         name = group.get("name")
         if name == "🚀 选择代理":
-            refs = group.get("proxies") or []
-            for new_name in (ai_group_name, normal_group_name):
-                if new_name not in refs:
-                    refs.insert(1, new_name)  # right after the group itself opens
+            refs = [
+                ref for ref in (group.get("proxies") or [])
+                if ref not in (ai_group_name, normal_group_name)
+            ]
+            # Keep the original first entry as the default; list AI group before
+            # the general group so AI-capable nodes are offered first.
+            insert_at = 1 if refs else 0
+            refs[insert_at:insert_at] = [ai_group_name, normal_group_name]
             group["proxies"] = refs
         elif name == "🤖 AI 服务":
-            refs = group.get("proxies") or []
-            for new_name in (ai_group_name, normal_group_name):
-                if new_name not in refs:
-                    refs.insert(0, new_name)
-            group["proxies"] = refs
+            # Clash select groups default to the FIRST proxy in the list.
+            # Put the Gemini-verified group first so AI traffic uses working
+            # AI nodes out of the box; keep the rest as manual fallbacks.
+            refs = [
+                ref for ref in (group.get("proxies") or [])
+                if ref not in (ai_group_name, normal_group_name)
+            ]
+            group["proxies"] = [ai_group_name, normal_group_name] + refs
         elif name in ("♻️ 自动选择", "🔰 延迟最低", "✅ 手动选择"):
             # Point the auto pools at the AI-capable subset so AI and general
             # traffic both prefer nodes proven to work on this network.
