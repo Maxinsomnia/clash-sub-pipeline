@@ -63,6 +63,16 @@ class TestSubscriptionUrlDetection(unittest.TestCase):
         ):
             self.assertFalse(scout._is_subscription_url(url), url)
 
+    def test_rejects_rule_lists(self):
+        """Geoip/rule lists parse to 0 nodes and must not be discovered."""
+        for url in (
+            "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt",
+            "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt",
+            "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt",
+            "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/china-list.txt",
+        ):
+            self.assertFalse(scout._is_subscription_url(url), url)
+
     def test_repo_relevance_filter(self):
         self.assertTrue(scout.TOPIC_RE.search("free clash subscription nodes"))
         self.assertTrue(scout.TOPIC_RE.search("翻墙 节点 订阅"))

@@ -86,7 +86,10 @@ BAD_PATH_RE = re.compile(
     r"\.(?:png|jpe?g|gif|svg|ico|md|pdf|zip|exe|dmg|go|ts|tsx|js|jsx|mts|"
     r"pb|toml|lock|html|css|py|rs|java|kt|swift|gradle|properties|xml)$|"
     r"readme|license|\.github|/assets?/|node_modules|/src/|/test|"
-    r"tsconfig|jsconfig|package(-lock)?\.json|config\.json",
+    r"tsconfig|jsconfig|package(-lock)?\.json|config\.json|"
+    # Rule/geoip lists are not proxy subscriptions (they parse to 0 nodes).
+    r"(?:direct|reject|china|proxy)-list\.txt$|(?:direct|reject|china)\.txt$|"
+    r"/proxy\.txt$",
     re.IGNORECASE,
 )
 # Directories that typically hold generated subscription data.
