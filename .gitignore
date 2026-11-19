@@ -28,6 +28,14 @@ private_sources.yaml
 mock_private.txt
 mock_nodes.txt
 
+# 本地网络筛选产物（含本机测速数据，不应入库）
+local-clash.yaml
+my-clash.yaml
+scout_candidates.json
+scout_report.json
+scout_report.md
+# 注意：reports/ 是每周巡查的公开报告目录，需入库供查看，勿加入忽略列表
+
 # 操作系统特定文件
 Thumbs.db
 Desktop.ini
