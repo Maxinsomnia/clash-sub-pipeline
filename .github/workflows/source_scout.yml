@@ -1,0 +1,105 @@
+name: Weekly Source Scout
+
+# Semi-automatic source discovery. Runs discover + evaluate and publishes a
+# quality report for human review. NEVER promotes/enables sources by itself.
+# NOTE: runner is overseas, so alive rates reflect overseas reachability only.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'  # 每周一 03:17 UTC = 北京时间 11:17
+  workflow_dispatch:      # 允许手动触发
+
+permissions:
+  contents: write
+
+concurrency:
+  group: source-scout-weekly
+  cancel-in-progress: false
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Shanghai
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 评估阈值（可用 Repository Variables 覆盖）
+      SCOUT_MAX_REPOS: ${{ vars.SCOUT_MAX_REPOS || '25' }}
+      SCOUT_MAX_CANDIDATES: ${{ vars.SCOUT_MAX_CANDIDATES || '30' }}
+      SCOUT_MAX_NODES: ${{ vars.SCOUT_MAX_NODES || '150' }}
+      SCOUT_MIN_NODES: ${{ vars.SCOUT_MIN_NODES || '5' }}
+      SCOUT_MIN_ALIVE_RATE: ${{ vars.SCOUT_MIN_ALIVE_RATE || '0.25' }}
+      SCOUT_TIMEOUT: ${{ vars.SCOUT_TIMEOUT || '5000' }}
+      SCOUT_WORKERS: ${{ vars.SCOUT_WORKERS || '60' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Discover candidate sources
+        run: |
+          python scripts/source_scout.py discover \
+            --max-repos "$SCOUT_MAX_REPOS" \
+            --out /tmp/scout_candidates.json
+
+      - name: Evaluate candidates with Mihomo kernel (overseas network)
+        run: |
+          if [ ! -s /tmp/scout_candidates.json ] || \
+             [ "$(python -c 'import json;print(len(json.load(open("/tmp/scout_candidates.json")).get("candidates") or []))')" = "0" ]; then
+            echo "No candidates discovered; writing an empty report."
+            cat > /tmp/scout_report.json <<'JSON'
+          {"generated_at":"","environment":"github-actions-overseas","summary":{"evaluated":0,"qualified":0},"thresholds":{},"reports":[],"environment_note":"No candidates discovered this week."}
+          JSON
+            exit 0
+          fi
+          python scripts/source_scout.py evaluate \
+            --candidates /tmp/scout_candidates.json \
+            --out /tmp/scout_report.json \
+            --max-candidates "$SCOUT_MAX_CANDIDATES" \
+            --max-nodes "$SCOUT_MAX_NODES" \
+            --min-nodes "$SCOUT_MIN_NODES" \
+            --min-alive-rate "$SCOUT_MIN_ALIVE_RATE" \
+            --timeout "$SCOUT_TIMEOUT" \
+            --workers "$SCOUT_WORKERS"
+
+      - name: Publish report to repo + artifact
+        run: |
+          STAMP="$(date +'%Y-%m-%d')"
+          mkdir -p reports
+          cp /tmp/scout_report.json "reports/source-scout-${STAMP}.json"
+          cp /tmp/scout_report.md "reports/source-scout-${STAMP}.md" 2>/dev/null || true
+          # Rolling "latest" files for easy linking.
+          cp /tmp/scout_report.json reports/latest.json
+          cp /tmp/scout_report.md reports/latest.md 2>/dev/null || true
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No report changes to commit."
+          else
+            git commit -m "chore: weekly source scout report ${STAMP}"
+            git pull --rebase origin master
+            git push origin master
+          fi
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-scout-report
+          path: |
+            /tmp/scout_report.json
+            /tmp/scout_report.md
+          retention-days: 30
+          if-no-files-found: warn

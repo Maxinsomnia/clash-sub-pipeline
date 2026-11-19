@@ -9,6 +9,7 @@ source_scout.py so `discover` does not pay the import cost of the probe stack.
 import asyncio
 import gzip
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -38,16 +39,21 @@ CLASHX_KERNEL_GZ = (
 
 
 def _find_kernel() -> Path:
-    env = __import__("os").getenv("MIHOMO_BIN")
+    """Locate a Mihomo kernel: local ClashX Meta on macOS, else download.
+
+    On GitHub Actions (Linux) there is no ClashX Meta, so we reuse the shared
+    kernel resolver which downloads the official linux-amd64 build.
+    """
+    env = os.getenv("MIHOMO_BIN")
     if env:
         path = Path(env)
         if not path.exists():
             raise SystemExit(f"MIHOMO_BIN not found: {env}")
         return path
     cached = Path(tempfile.gettempdir()) / "local-probe-mihomo"
-    if cached.exists() and shutil.which and __import__("os").access(cached, __import__("os").X_OK):
+    if cached.exists() and os.access(cached, os.X_OK):
         return cached
-    if Path(CLASHX_KERNEL_GZ).exists():
+    if sys.platform == "darwin" and Path(CLASHX_KERNEL_GZ).exists():
         data = gzip.decompress(Path(CLASHX_KERNEL_GZ).read_bytes())
         cached.write_bytes(data)
         cached.chmod(0o755)
@@ -56,7 +62,14 @@ def _find_kernel() -> Path:
         found = shutil.which(candidate)
         if found:
             return Path(found)
-    raise RuntimeError("No local Mihomo kernel; set MIHOMO_BIN or install ClashX Meta.")
+    # Cross-platform fallback (downloads linux/macOS binary as appropriate).
+    try:
+        from core.kernel_tester import resolve_binary
+        return resolve_binary()
+    except Exception as exc:
+        raise RuntimeError(
+            f"No usable Mihomo kernel ({exc}); set MIHOMO_BIN explicitly."
+        ) from exc
 
 
 def _free_port() -> int:
@@ -147,30 +160,85 @@ def evaluate_candidates(args) -> int:
     qualified_count = sum(1 for r in reports if r.get("qualified"))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(
-        json.dumps(
-            {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "thresholds": {
-                    "min_nodes": args.min_nodes,
-                    "min_alive_rate": args.min_alive_rate,
-                },
-                "summary": {
-                    "evaluated": len(reports),
-                    "qualified": qualified_count,
-                },
-                "reports": reports,
-            },
-            ensure_ascii=False,
-            indent=2,
+    in_ci = os.getenv("GITHUB_ACTIONS") == "true" or bool(os.getenv("CI"))
+    environment = "github-actions-overseas" if in_ci else "local"
+    report_data = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "environment": environment,
+        "environment_note": (
+            "Probed from GitHub Actions runner (overseas). Alive rates reflect "
+            "overseas reachability, NOT mainland China. Re-run locally on a "
+            "Chinese network before promoting a source."
+            if in_ci else
+            "Probed from this local machine; alive rates reflect this network."
         ),
+        "thresholds": {
+            "min_nodes": args.min_nodes,
+            "min_alive_rate": args.min_alive_rate,
+        },
+        "summary": {
+            "evaluated": len(reports),
+            "qualified": qualified_count,
+        },
+        "reports": reports,
+    }
+    out.write_text(
+        json.dumps(report_data, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    _write_markdown_summary(out.with_suffix(".md"), report_data)
     print(f"\nEvaluated {len(reports)} sources; {qualified_count} qualified.")
-    print(f"Report: {out}")
+    print(f"Environment: {environment}")
+    print(f"Report: {out} (and {out.with_suffix('.md')})")
     print("Review the report, then: python scripts/source_scout.py promote "
           "--approve '<repo>:<url>'")
     return 0
+
+
+def _write_markdown_summary(path: Path, data: dict) -> None:
+    """Human-readable Markdown report for GitHub / browser viewing."""
+    lines = [
+        "# 候选订阅源质量报告",
+        "",
+        f"- 生成时间（UTC）：{data['generated_at']}",
+        f"- 探测环境：`{data['environment']}`",
+        f"- 评估数量：{data['summary']['evaluated']}，达标：{data['summary']['qualified']}",
+        f"- 阈值：最少解析节点 {data['thresholds']['min_nodes']}，最低存活率 "
+        f"{data['thresholds']['min_alive_rate']:.0%}",
+        "",
+        f"> ⚠️ {data['environment_note']}",
+        "",
+        "| 仓库 | URL | 解析 | 测试 | 存活 | 存活率 | 最快(ms) | 结论 |",
+        "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |",
+    ]
+    for r in data["reports"]:
+        repo = (r.get("repo") or "unknown").replace("|", "\\|")
+        url = (r.get("url") or "").replace("|", "\\|")
+        if len(url) > 60:
+            url = url[:57] + "..."
+        verdict = "✅ 达标" if r.get("qualified") else "❌ 未达标"
+        if r.get("error"):
+            verdict = f"⚠️ {str(r['error'])[:40]}"
+        fastest = r.get("fastest_ms")
+        fastest = fastest if isinstance(fastest, int) else "-"
+        lines.append(
+            f"| {repo} | {url} | {r.get('parsed', 0)} | {r.get('tested', 0)} | "
+            f"{r.get('alive', 0)} | {r.get('alive_rate', 0):.0%} | {fastest} | {verdict} |"
+        )
+    lines += [
+        "",
+        "## 审核说明",
+        "",
+        "达标仅表示在该探测环境可用。确认要纳入时，用报告中的 `key` 字段执行：",
+        "",
+        "```bash",
+        "python scripts/source_scout.py promote --approve '<key>'",
+        "```",
+        "",
+        "promote 只会写入 `enabled: false` 的候选项，需你手动确认后才生效。",
+        "",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _probe_nodes(nodes: List[Node], kernel: Path, args) -> tuple:
