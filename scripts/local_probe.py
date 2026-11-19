@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -42,6 +43,10 @@ import yaml
 
 DEFAULT_URL = "https://maxinsomnia.github.io/clash-sub-pipeline/clash.yaml"
 DEFAULT_AI_URL = "https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta"
+# Real Gemini web UI: Google returns HTTP 403 here for datacenter/proxy IPs even
+# when the API discovery endpoint and www.google.com return 200. This is the
+# endpoint that actually reflects whether a browser can use Gemini.
+AI_WEB_URL = "https://gemini.google.com/"
 CLASHX_KERNEL_GZ = (
     "/Applications/ClashX Meta.app/Contents/Resources/"
     "com.metacubex.ClashX.ProxyConfigHelper.meta.gz"
@@ -119,6 +124,120 @@ def test_one(name, base, test_url, timeout_ms, opener):
     return name, None
 
 
+# Gemini page-enablement flag used by clash-verge-rev / subs-check. Google
+# embeds a feature-toggle map in the Gemini web app; flag 45631641=true is
+# present only when the page is actually usable (not a 403 / region block).
+# Format has changed over time: old "45631641,null,true", new escaped
+# "\\\"45631641\\\":true" inside the JS payload. Match both.
+GEMINI_OK_PATTERNS = (
+    '45631641,null,true',
+    '\\"45631641\\":true',
+    '"45631641":true',
+)
+BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+)
+
+
+def test_gemini(mix_port, timeout_ms, url=AI_WEB_URL):
+    """Check whether Gemini is truly usable through the selected node.
+
+    Returns (usable, latency_ms). HTTP status alone is NOT enough: Google
+    returns 200 for region-block / risk-control pages, and Mihomo's delay API
+    even counts 403 as success. We inspect the response body for the Gemini
+    enablement flag, the same method used by clash-verge-rev and subs-check.
+    """
+    proxy = urllib.request.ProxyHandler({
+        "http": f"http://127.0.0.1:{mix_port}",
+        "https": f"http://127.0.0.1:{mix_port}",
+    })
+    opener = urllib.request.build_opener(proxy)
+    request = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA})
+    started = time.monotonic()
+    try:
+        with opener.open(request, timeout=timeout_ms / 1000.0 + 3) as response:
+            body = response.read(2_000_000).decode("utf-8", "ignore")
+        latency = round((time.monotonic() - started) * 1000, 1)
+        usable = any(pattern in body for pattern in GEMINI_OK_PATTERNS)
+        return usable, latency
+    except urllib.error.HTTPError:
+        # 403 / other error pages never carry the enablement flag.
+        return False, None
+    except Exception:
+        return False, None
+
+
+def check_gemini_one_node(name, config, binary, timeout_ms, url):
+    """Check one node's real Gemini usability via a throwaway kernel instance.
+
+    Returns (name, latency_ms, usable). Each call starts its own kernel so
+    callers can parallelize freely (no shared proxy-selector state).
+    """
+    proxies = [p for p in config["proxies"] if p.get("name") == name]
+    if not proxies:
+        return name, None, False
+    workdir = Path(tempfile.mkdtemp(prefix="gemini-probe-"))
+    mix_port, ctrl_port = free_port(), free_port()
+    minimal = {
+        "mixed-port": mix_port,
+        "external-controller": f"127.0.0.1:{ctrl_port}",
+        "mode": "direct",
+        "log-level": "error",
+        "proxies": proxies,
+        "rules": ["MATCH,DIRECT"],
+    }
+    cfg_path = workdir / "config.yaml"
+    cfg_path.write_text(
+        yaml.safe_dump(minimal, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    log = (workdir / "kernel.log").open("w")
+    process = None
+    try:
+        process = subprocess.Popen(
+            [str(binary), "-d", str(workdir), "-f", str(cfg_path)],
+            stdout=log, stderr=subprocess.STDOUT,
+        )
+        # Wait for the controller to come up (means mixed-port is ready too).
+        ready = False
+        for _ in range(60):
+            if process.poll() is not None:
+                break
+            try:
+                ctl_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                ctl_opener.open(f"http://127.0.0.1:{ctrl_port}/version", timeout=1).read()
+                ready = True
+                break
+            except Exception:
+                time.sleep(0.1)
+        if not ready:
+            return name, None, False
+        usable, latency = test_gemini(mix_port, timeout_ms, url)
+        return name, latency, usable
+    except Exception:
+        return name, None, False
+    finally:
+        if process is not None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        log.close()
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def select_proxy(base, group, name, opener):
+    """Point a select proxy-group at `name` via the Mihomo external controller."""
+    # Mihomo API: PUT /proxies/{group} with {"name": ...} selects a member.
+    endpoint = base + "/proxies/" + urllib.parse.quote(group, safe="")
+    payload = json.dumps({"name": name}).encode("utf-8")
+    request = urllib.request.Request(endpoint, data=payload, method="PUT",
+                                     headers={"Content-Type": "application/json"})
+    with opener.open(request, timeout=10) as response:
+        response.read()
+
+
 def probe(config, binary, args):
     """Two-stage probe: general reachability, then AI (Gemini) reachability.
 
@@ -131,10 +250,17 @@ def probe(config, binary, args):
     minimal = {
         "mixed-port": mix_port,
         "external-controller": f"127.0.0.1:{ctrl_port}",
-        "mode": "direct",
+        "mode": "rule",
         "log-level": "error",
         "proxies": config["proxies"],
-        "rules": ["MATCH,DIRECT"],
+        # PROBE selector lets us route mixed-port traffic through one node at a
+        # time, so we can read the real HTTP status (delay API hides 403s).
+        "proxy-groups": [{
+            "name": "PROBE",
+            "type": "select",
+            "proxies": [p.get("name") for p in config["proxies"]],
+        }],
+        "rules": ["MATCH,PROBE"],
     }
     cfg_path = workdir / "config.yaml"
     cfg_path.write_text(
@@ -175,23 +301,29 @@ def probe(config, binary, args):
             f"{len(working)}/{len(names)} usable ({100 * len(working) / max(1, len(names)):.1f}%)"
         )
 
-        # Stage 2: only test AI reachability on nodes that already work.
+        # Stage 2: real Gemini WEB request on working nodes. Mihomo's delay
+        # API counts HTTP 403 as success, so we inspect the response body for
+        # Gemini's enablement flag (same method as clash-verge / subs-check).
+        # Each worker runs its own tiny kernel instance so nodes are checked in
+        # parallel without a shared selector group state.
         ai_capable = {}
         if working and not args.skip_ai:
             ai_names = list(working)
-            print(f"Checking AI (Gemini) reachability on {len(ai_names)} working nodes ...")
+            print(f"Checking real Gemini web access on {len(ai_names)} working nodes ...")
             ai_started = time.time()
             with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
                 ai_results = list(
                     pool.map(
-                        lambda n: test_one(n, base, args.ai_url, args.timeout, opener),
+                        lambda n: check_gemini_one_node(
+                            n, config, binary, args.timeout, args.ai_url
+                        ),
                         ai_names,
                     )
                 )
-            ai_capable = {name: delay for name, delay in ai_results if delay is not None}
+            ai_capable = {name: delay for name, delay, ok in ai_results if ok}
             print(
                 f"AI probe done in {time.time() - ai_started:.1f}s: "
-                f"{len(ai_capable)}/{len(ai_names)} can reach Gemini "
+                f"{len(ai_capable)}/{len(ai_names)} can actually open Gemini "
                 f"({100 * len(ai_capable) / max(1, len(ai_names)):.1f}%)"
             )
         return working, ai_capable
@@ -340,8 +472,9 @@ def main():
     parser.add_argument("--input", help="Local config file (overrides --url)")
     parser.add_argument("--output", default="local-clash.yaml", help="Output config path")
     parser.add_argument("--test-url", default="https://cp.cloudflare.com/generate_204")
-    parser.add_argument("--ai-url", default=DEFAULT_AI_URL,
-                        help="Endpoint used to judge AI (Gemini) availability")
+    parser.add_argument("--ai-url", default=AI_WEB_URL,
+                        help="Endpoint whose HTTP 200 defines 'AI capable' "
+                             "(default: Gemini web UI; 403 = datacenter IP blocked)")
     parser.add_argument("--skip-ai", action="store_true",
                         help="Skip AI reachability test and grouping")
     parser.add_argument("--timeout", type=int, default=5000, help="Per-node timeout in ms")

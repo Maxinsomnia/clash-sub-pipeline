@@ -97,8 +97,22 @@ python scripts/local_probe.py --skip-ai
 `MIHOMO_BIN` 覆盖），并做**两阶段真实 HTTP 测速**：
 
 1. **通用可达性**（`--test-url`，默认 Cloudflare `generate_204`）——剔除本机连不通的节点。
-2. **AI 可达性**（`--ai-url`，默认 Gemini API discovery 端点）——只对第 1 步存活的节点测，
-   用能否连到 Gemini 判断该节点是否可用于 OpenAI/Gemini 等 AI 服务。
+2. **AI 可达性**（`--ai-url`，默认 `https://gemini.google.com/` 网页）——只对第 1 步存活的节点测，
+   用**真实页面内容**判断该节点能否打开 Gemini。
+
+**为什么不用状态码 / API 端点判断？**（踩过的坑，重要）
+
+- Google 对**数据中心/云厂商 IP**（AWS/GCP/Azure 等）会返回
+  `403. Your client does not have permission to get URL / from this server`——
+  网络是通的（同样的节点访问 `www.google.com` 返回 200），但 Gemini 服务在应用层拒绝。
+- 更麻烦的是，Google 有时对风控 IP 返回 **HTTP 200 的地区限制/风控页**，且
+  **Mihomo 的 delay API 把 403 也算作"成功"**（只测能否收到响应，不看状态码）。
+- 因此判定改为：带浏览器 UA 请求 Gemini 网页，检查响应体里的功能开关特征
+  `45631641=true`（旧格式为 `45631641,null,true`）——这是 clash-verge-rev /
+  subs-check 采用的成熟方法，能识破"200 但不可用"的假象。只有当页面真正可用时才计入 AI 组。
+
+> 注：特征格式可能随 Google 前端更新变化。若发现所有节点都判为不可用，
+> 用 `--ai-url` 指向其他 Gemini 入口，或检查页面里的 `"45631641":true` 是否改名。
 
 输出配置会：
 - 删除**没有任何健康节点**的地区策略组及其菜单引用；
