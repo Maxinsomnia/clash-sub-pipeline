@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-11-19T00:05:55.190842+00:00",
+  "environment": "github-actions-overseas",
+  "environment_note": "Probed from GitHub Actions runner (overseas). Alive rates reflect overseas reachability, NOT mainland China. Re-run locally on a Chinese network before promoting a source.",
+  "thresholds": {
+    "min_nodes": 5,
+    "min_alive_rate": 0.25
+  },
+  "summary": {
+    "evaluated": 5,
+    "qualified": 0
+  },
+  "reports": [
+    {
+      "url": "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt",
+      "repo": "Loyalsoldier/clash-rules",
+      "stars": 29362,
+      "found_at": "2026-11-19T00:05:48.790969+00:00",
+      "parsed": 0,
+      "tested": 0,
+      "alive": 0,
+      "alive_rate": 0.0,
+      "qualified": false,
+      "error": "no parsable nodes"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt",
+      "repo": "Loyalsoldier/v2ray-rules-dat",
+      "stars": 21063,
+      "found_at": "2026-11-19T00:05:51.650746+00:00",
+      "parsed": 0,
+      "tested": 0,
+      "alive": 0,
+      "alive_rate": 0.0,
+      "qualified": false,
+      "error": "no parsable nodes"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/proxy-list.txt",
+      "repo": "Loyalsoldier/v2ray-rules-dat",
+      "stars": 21063,
+      "found_at": "2026-11-19T00:05:51.650766+00:00",
+      "parsed": 0,
+      "tested": 0,
+      "alive": 0,
+      "alive_rate": 0.0,
+      "qualified": false,
+      "error": "no parsable nodes"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt",
+      "repo": "Loyalsoldier/v2ray-rules-dat",
+      "stars": 21063,
+      "found_at": "2026-11-19T00:05:51.650769+00:00",
+      "parsed": 0,
+      "tested": 0,
+      "alive": 0,
+      "alive_rate": 0.0,
+      "qualified": false,
+      "error": "no parsable nodes"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/china-list.txt",
+      "repo": "Loyalsoldier/v2ray-rules-dat",
+      "stars": 21063,
+      "found_at": "2026-11-19T00:05:51.650773+00:00",
+      "parsed": 0,
+      "tested": 0,
+      "alive": 0,
+      "alive_rate": 0.0,
+      "qualified": false,
+      "error": "no parsable nodes"
+    }
+  ]
+}
