@@ -1,8 +1,8 @@
 # Clash Sub Pipeline
 
 <!-- STATS_BADGE_START -->
-![Update](https://img.shields.io/badge/Updated-2026--11--23_00%3A37%3A34-green.svg?style=flat-square)
-![Nodes](https://img.shields.io/badge/Valid_Nodes-237-orange.svg?style=flat-square)
+![Update](https://img.shields.io/badge/Updated-2026--11--23_06%3A02%3A30-green.svg?style=flat-square)
+![Nodes](https://img.shields.io/badge/Valid_Nodes-252-orange.svg?style=flat-square)
 ![Sources](https://img.shields.io/badge/Active_Sources-9-blue.svg?style=flat-square)
 <!-- STATS_BADGE_END -->
 
